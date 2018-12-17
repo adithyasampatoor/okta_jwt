@@ -2,8 +2,8 @@ import calendar
 from calendar import timegm
 from datetime import datetime, timedelta
 from six import string_types
-from exceptions import ExpiredSignatureError
-from exceptions import JWTClaimsError
+from okta_jwt.exceptions import ExpiredSignatureError, JWTClaimsError
+
 
 
 def check_presence_of(access_token, issuer, audience, client_ids):

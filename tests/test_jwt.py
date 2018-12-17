@@ -18,7 +18,7 @@ class TestJWT(unittest.TestCase):
         self.issuer = ''
 
         with self.assertRaises(ValueError) as context:
-            validate_token(self.access_token, self.issuer, self.audience, self.client_id)
+            validate_token(self.access_token)
 
         self.assertTrue('Issuer is required' in str(context.exception))
 
@@ -27,7 +27,7 @@ class TestJWT(unittest.TestCase):
         self.access_token = ''
 
         with self.assertRaises(ValueError) as context:
-            validate_token(self.access_token, self.issuer, self.audience, self.client_id)
+            validate_token(self.access_token)
 
         self.assertTrue('Access Token is required' in str(context.exception))
 
@@ -36,7 +36,7 @@ class TestJWT(unittest.TestCase):
         self.audience = ''
 
         with self.assertRaises(ValueError) as context:
-            validate_token(self.access_token, self.issuer, self.audience, self.client_id)
+            validate_token(self.access_token)
 
         self.assertTrue('Audience is required' in str(context.exception))
 
@@ -45,7 +45,7 @@ class TestJWT(unittest.TestCase):
         self.client_id = ''
 
         with self.assertRaises(ValueError) as context:
-            validate_token(self.access_token, self.issuer, self.audience, self.client_id)
+            validate_token(self.access_token)
 
         self.assertTrue('Client ID is required' in str(context.exception))
 
@@ -54,7 +54,7 @@ class TestJWT(unittest.TestCase):
         self.issuer = 'invalid'
 
         with self.assertRaises(JWTClaimsError) as context:
-            validate_token(self.access_token, self.issuer, self.audience, self.client_id)
+            validate_token(self.access_token)
 
         self.assertTrue('Invalid Issuer' in str(context.exception))
 
@@ -63,7 +63,7 @@ class TestJWT(unittest.TestCase):
         self.audience = 'invalid'
 
         with self.assertRaises(JWTClaimsError) as context:
-            validate_token(self.access_token, self.issuer, self.audience, self.client_id)
+            validate_token(self.access_token)
 
         self.assertTrue('Invalid Audience' in str(context.exception))
 
@@ -72,13 +72,13 @@ class TestJWT(unittest.TestCase):
         self.client_id = 'invalid'
 
         with self.assertRaises(JWTClaimsError) as context:
-            validate_token(self.access_token, self.issuer, self.audience, self.client_id)
+            validate_token(self.access_token)
 
         self.assertTrue('Invalid Client' in str(context.exception))
 
 
     def test_valid_token(self):
-        valid = validate_token(self.access_token, self.issuer, self.audience, self.client_id)
+        valid = validate_token(self.access_token)
         self.assertTrue(bool(valid))
 
 

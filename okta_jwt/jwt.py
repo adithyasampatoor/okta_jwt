@@ -4,7 +4,7 @@ import requests
 from jose import jwk, jwt
 from requests.auth import HTTPBasicAuth
 from jose.utils import base64url_decode
-from utils import verify_exp, verify_aud, check_presence_of, verify_iat, verify_iss, verify_cid
+from okta_jwt.utils import verify_exp, verify_aud, check_presence_of, verify_iat, verify_iss, verify_cid
 
 
 
@@ -32,7 +32,9 @@ def generate_token():
         'Content-Type': 'application/x-www-form-urlencoded'
     }
 
-    # scope and grant_type are gonna be constant
+    """ scope and grant_type are gonna be constant,
+    Replace username & password with your credentials
+    """
     payload = {
         "username":   "test@example.org",
         "password":   "Password123",
