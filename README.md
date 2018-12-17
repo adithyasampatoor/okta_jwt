@@ -1,12 +1,39 @@
 # okta_jwt
 
-Okta JWT Access Token verifier for Python using cached JWKs.
+Okta JWT Access Token Generator & verifier for Python using cached JWKs.
 
 ## Installation
 
     $ pip install okta_jwt
 
 ## Usage
+
+Following Environment Variables needs to be configured inorder to run the following
+
+* ```OKTA_CLIENT_IDS```(you can pass in multiple client ids)
+* ```OKTA_CLIENT_SECRET```
+* ```OKTA_URL```
+* ```OKTA_ISSUER```
+* ```OKTA_AUDIENCE```
+
+```python
+	>>> from okta_jwt.jwt import generate_token
+	>>> generate_token()
+
+	This generates and returns Okta Access Token.
+	You should Probably see something as below:
+	[Okta::Jwt] Generating Okta Token
+	{token}
+```
+
+```python
+	>>> from okta_jwt.jwt import validate_token
+	>>> validate_token('access_token')
+
+	Pass in the Access Token generated earlier(you can pass
+	in your own okta access token).
+	If the token is valid then it will return the payload
+```
 
 ## Development
 
