@@ -48,8 +48,6 @@ setup(
         'Topic :: Utilities'
     ],
     extras_require=extras_require,
-    setup_requires=['pytest-runner'],
-    tests_require=[
-    ],
+    tests_require=['unittest'],
     install_requires=['six <2.0', 'requests', 'python-jose']
 )

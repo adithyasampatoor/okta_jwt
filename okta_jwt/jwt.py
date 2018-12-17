@@ -1,8 +1,66 @@
+import os
 import json
 import requests
 from jose import jwk, jwt
+from requests.auth import HTTPBasicAuth
 from jose.utils import base64url_decode
 from utils import verify_exp, verify_aud, check_presence_of, verify_iat, verify_iss, verify_cid
+
+
+
+# Generates Okta Access Token
+def generate_token():
+    """For generating a token, you need to add the
+    following ENV variables in your ~/.bash_profile
+    1) OKTA_CLIENT_IDS (multiple Client IDs can be passed)
+    2) OKTA_CLIENT_SECRET
+    3) OKTA_URL
+    4) OKTA_ISSUER
+    """
+    try:
+        client_id     = os.environ['OKTA_CLIENT_IDS']
+        client_secret = os.environ['OKTA_CLIENT_SECRET']
+        oidc_url      = os.environ['OKTA_URL']
+        issuer        = os.environ['OKTA_ISSUER']
+    except Exception as e:
+        raise Exception("Failed to load Okta ENV Variables : " + str(e))
+
+    auth = HTTPBasicAuth(client_id, client_secret)
+
+    headers = {
+        'Accept':       'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+
+    # scope and grant_type are gonna be constant
+    payload = {
+        "username":   "test@example.org",
+        "password":   "Password123",
+        "scope":      "openid",
+        "grant_type": "password"
+    }
+
+    url = "{}/v1/token".format(issuer)
+
+    try:
+        response = requests.post(url, data=payload, headers=headers, auth=auth)
+
+        # Consider any status other than 2xx an error
+        if not response.status_code // 100 == 2:
+            return "Error: Unexpected response {}".format(response)
+
+        return_value = response.json()
+
+        if 'access_token' not in return_value:
+            return "no access_token in response from /token endpoint", 401
+
+        print("[Okta::Jwt] Generating Okta Token")
+        access_token = return_value['access_token']
+
+        return access_token
+    except requests.exceptions.RequestException as e:
+        # A serious problem happened, like an SSLError or InvalidURL
+        raise "Error: {}".format(str(e))
 
 
 # Verifies Claims
@@ -20,7 +78,15 @@ def verify_claims(payload, issuer, audience, cid_list):
 
 
 # Validates Token
-def validate_token(access_token, issuer, audience, client_ids):
+def validate_token(access_token):
+    try:
+        client_ids = os.environ['OKTA_CLIENT_IDS']
+        oidc_url   = os.environ['OKTA_URL']
+        issuer     = os.environ['OKTA_ISSUER']
+        audience   = os.environ['OKTA_AUDIENCE']
+    except Exception as e:
+        raise Exception("Failed to load Okta ENV Variables : " + str(e))
+
     # Client ID's list
     cid_list = []
 
@@ -71,7 +137,7 @@ def fetch_jwk_for(header, payload):
 
     # Fetching jwk
     url = fetch_metadata_for(payload)['jwks_uri']
-    jwks_response = requests.get(url=url)
+    jwks_response = requests.get(url)
 
     #############
     # for key in jwks_response.json()['keys'][0]:
@@ -97,12 +163,13 @@ def fetch_metadata_for(payload):
     # Extracting auth_server_id & client_id from the Payload
     auth_server_id = payload['iss'].split('/')[-1]
     client_id      = str(payload['cid']) or str(payload['aud'])
+    issuer         = os.environ['OKTA_ISSUER']
 
     # Preparing URL to get the metadata
-    url = "{}/{}/.well-known/oauth-authorization-server?client_id={}".format(oidc_url, auth_server_id, client_id)
+    url = "{}/.well-known/oauth-authorization-server?client_id={}".format(issuer, client_id)
 
     try:
-        metadata_response = requests.get(url=url)
+        metadata_response = requests.get(url)
 
         # Consider any status other than 2xx an error
         if not metadata_response.status_code // 100 == 2:
@@ -113,4 +180,4 @@ def fetch_metadata_for(payload):
 
     except requests.exceptions.RequestException as e:
         # A serious problem happened, like an SSLError or InvalidURL
-        return "Error: {}".format(str(e))
+        raise "Error: {}".format(str(e))

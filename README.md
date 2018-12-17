@@ -4,8 +4,6 @@ Okta JWT Access Token verifier for Python using cached JWKs.
 
 ## Installation
 
-::
-
     $ pip install okta_jwt
 
 ## Usage
@@ -14,7 +12,7 @@ Okta JWT Access Token verifier for Python using cached JWKs.
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/adithyasampatoor/okta_jwt. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
+Bug reports and Pull Requests(PR's) are welcome on GitHub at https://github.com/adithyasampatoor/okta_jwt. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
 
 ## License
 
