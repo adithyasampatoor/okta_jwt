@@ -12,7 +12,6 @@ Following Environment Variables needs to be configured inorder to run the follow
 
 * ```OKTA_CLIENT_IDS```(you can pass in multiple client ids)
 * ```OKTA_CLIENT_SECRET```
-* ```OKTA_URL```
 * ```OKTA_ISSUER```
 * ```OKTA_AUDIENCE```
 

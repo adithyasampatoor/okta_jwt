@@ -8,19 +8,20 @@ from okta_jwt.utils import verify_exp, verify_aud, check_presence_of, verify_iat
 
 
 
+JWKS_CACHE = {}
+
+
 # Generates Okta Access Token
 def generate_token():
     """For generating a token, you need to add the
     following ENV variables in your ~/.bash_profile
     1) OKTA_CLIENT_IDS (multiple Client IDs can be passed)
     2) OKTA_CLIENT_SECRET
-    3) OKTA_URL
-    4) OKTA_ISSUER
+    3) OKTA_ISSUER
     """
     try:
         client_id     = os.environ['OKTA_CLIENT_IDS']
         client_secret = os.environ['OKTA_CLIENT_SECRET']
-        oidc_url      = os.environ['OKTA_URL']
         issuer        = os.environ['OKTA_ISSUER']
     except Exception as e:
         raise Exception("Failed to load Okta ENV Variables : " + str(e))
@@ -83,11 +84,10 @@ def verify_claims(payload, issuer, audience, cid_list):
 def validate_token(access_token):
     try:
         client_ids = os.environ['OKTA_CLIENT_IDS']
-        oidc_url   = os.environ['OKTA_URL']
         issuer     = os.environ['OKTA_ISSUER']
         audience   = os.environ['OKTA_AUDIENCE']
     except Exception as e:
-        raise Exception("Failed to load Okta ENV Variables : " + str(e))
+        raise Exception('Failed to load Okta ENV Variables : ' + str(e))
 
     # Client ID's list
     cid_list = []
@@ -107,7 +107,8 @@ def validate_token(access_token):
     verify_claims(payload, issuer, audience, cid_list)
 
     # Verifying Signature
-    key = jwk.construct(fetch_jwk_for(header, payload))
+    jwks_key = fetch_jwk_for(header, payload)
+    key      = jwk.construct(jwks_key)
     message, encoded_sig = access_token.rsplit('.', 1)
     decoded_sig = base64url_decode(encoded_sig.encode('utf-8'))
 
@@ -130,33 +131,36 @@ def fetch_jwk_for(header, payload):
     if 'kid' in header:
         kid = header['kid']
     else:
-        raise ValueError('The Token header must contain a "kid" value')
+        raise ValueError('Token header is missing "kid" value')
 
-    # if kid in key_cache:
-    #     return key_cache[kid]
+    global JWKS_CACHE
+
+    # If there is a matching kid, it wont fetch for kid from the server again
+    if JWKS_CACHE:
+        if kid in JWKS_CACHE:
+            return JWKS_CACHE[kid]
 
     print("[Okta::Jwt] Fetching public key: kid => " + str(kid))
 
     # Fetching jwk
     url = fetch_metadata_for(payload)['jwks_uri']
-    jwks_response = requests.get(url)
 
-    #############
-    # for key in jwks_response.json()['keys'][0]:
-    #     jwk_id = key['kid']
-    #     key_cache[jwk_id] = key
+    try:
+        jwks_response = requests.get(url)
 
-    # if key_id in key_cache:
-    #     return key_cache[key_id]
-    # else:
-    #     raise RuntimeError("Unable to fetch public key from jwks_uri")
-    ###########
+        # Consider any status other than 2xx an error
+        if not jwks_response.status_code // 100 == 2:
+            return "Error: Unexpected response {}".format(jwks_response)
+    except requests.exceptions.RequestException as e:
+        # A serious problem happened, like an SSLError or InvalidURL
+        raise "Error: {}".format(str(e))
 
     jwk = list(filter(lambda x: x['kid'] == kid, jwks_response.json()['keys']))[0]
-    return jwk
 
-    # cache and return the key
-    # to implement
+    # Adding JWK to the Cache
+    JWKS_CACHE[kid] = jwk
+
+    return jwk
 
 
 def fetch_metadata_for(payload):
