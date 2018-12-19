@@ -7,26 +7,15 @@ Link to PyPi - click [here](https://pypi.org/project/okta-jwt/)
 ## Installation
 
 ```python
-	$ pip install okta_jwt
+	pip install okta_jwt
 ```
-
-### Prerequisites
-
-Following Environment Variables needs to be configured in your `bash_profile`
-
-* ```OKTA_CLIENT_IDS``` (you can pass in multiple client ids)
-* ```OKTA_CLIENT_SECRET```
-* ```OKTA_ISSUER```
-* ```OKTA_AUDIENCE```
-
-NOTE: source your `bash_profile`
 
 ### Usage
 
-To generate a token, run
+To generate a token, you need to pass in `issuer`, `client_id`, `client_secret`, `username` and `password` as parameters
 ```python
 	>>> from okta_jwt.jwt import generate_token
-	>>> generate_token()
+	>>> generate_token(issuer, client_id, client_secret, username, password)
 ```
 
 This generates and returns Okta Access Token. You should Probably see something as below:
@@ -35,13 +24,12 @@ This generates and returns Okta Access Token. You should Probably see something 
 	{token}
 ```
 
-To Validate the Access Token
+To Validate the Access Token, you need to pass in the `access_token`, `issuer`, `audience` and `client_ids` as parameters. You can pass in multiple Client IDs
 ```python
 	>>> from okta_jwt.jwt import validate_token
-	>>> validate_token('access_token')
+	>>> validate_token(access_token, issuer, audience, client_ids)
 ```
 
-Pass in the Access Token generated earlier(you can pass in your own okta access token).
 If the token is valid then it will return the payload.
 
 ## Running the tests

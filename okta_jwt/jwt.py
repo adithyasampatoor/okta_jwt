@@ -12,20 +12,10 @@ JWKS_CACHE = {}
 
 
 # Generates Okta Access Token
-def generate_token():
-    """For generating a token, you need to add the
-    following ENV variables in your ~/.bash_profile
-    1) OKTA_CLIENT_IDS (multiple Client IDs can be passed)
-    2) OKTA_CLIENT_SECRET
-    3) OKTA_ISSUER
+def generate_token(issuer, client_id, client_secret, username, password, scope='openid'):
+    """For generating a token, you need to pass in the Issuer,
+    Client ID, Client Secret, Username and Password
     """
-    try:
-        client_id     = os.environ['OKTA_CLIENT_IDS']
-        client_secret = os.environ['OKTA_CLIENT_SECRET']
-        issuer        = os.environ['OKTA_ISSUER']
-    except Exception as e:
-        raise Exception("Failed to load Okta ENV Variables : " + str(e))
-
     auth = HTTPBasicAuth(client_id, client_secret)
 
     headers = {
@@ -33,13 +23,11 @@ def generate_token():
         'Content-Type': 'application/x-www-form-urlencoded'
     }
 
-    """ scope and grant_type are gonna be constant,
-    Replace username & password with your credentials
-    """
+    # grant_type is gonna be constant
     payload = {
-        "username":   "test@example.org",
-        "password":   "Password123",
-        "scope":      "openid",
+        "username":   username,
+        "password":   password,
+        "scope":      scope,
         "grant_type": "password"
     }
 
@@ -81,14 +69,7 @@ def verify_claims(payload, issuer, audience, cid_list):
 
 
 # Validates Token
-def validate_token(access_token):
-    try:
-        client_ids = os.environ['OKTA_CLIENT_IDS']
-        issuer     = os.environ['OKTA_ISSUER']
-        audience   = os.environ['OKTA_AUDIENCE']
-    except Exception as e:
-        raise Exception('Failed to load Okta ENV Variables : ' + str(e))
-
+def validate_token(access_token, issuer, audience, client_ids):
     # Client ID's list
     cid_list = []
 
@@ -168,8 +149,8 @@ def fetch_metadata_for(payload):
 
     # Extracting auth_server_id & client_id from the Payload
     auth_server_id = payload['iss'].split('/')[-1]
-    client_id      = str(payload['cid']) or str(payload['aud'])
-    issuer         = os.environ['OKTA_ISSUER']
+    client_id      = payload['cid']
+    issuer         = payload['iss']
 
     # Preparing URL to get the metadata
     url = "{}/.well-known/oauth-authorization-server?client_id={}".format(issuer, client_id)
