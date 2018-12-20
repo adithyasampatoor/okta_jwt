@@ -42,6 +42,6 @@ setup(
         'Topic :: Utilities'
     ],
     extras_require=extras_require,
-    tests_require=['unittest', 'mock', 'ddt'],
+    tests_require=['mock', 'ddt'],
     install_requires=['six <2.0', 'requests', 'python-jose']
 )
