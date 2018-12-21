@@ -38,12 +38,12 @@ def generate_token(issuer, client_id, client_secret, username, password, scope='
 
         # Consider any status other than 2xx an error
         if not response.status_code // 100 == 2:
-            return "Error: Unexpected response {}".format(response)
+            raise Exception(response.text, response.status_code)
 
         return_value = response.json()
 
         if 'access_token' not in return_value:
-            return "no access_token in response from /token endpoint", 401
+            raise Exception("no access_token in response from /token endpoint", 401)
 
         print("[Okta::Jwt] Generating Okta Token")
         access_token = return_value['access_token']
@@ -147,8 +147,7 @@ def fetch_jwk_for(header, payload):
 def fetch_metadata_for(payload):
     print("[Okta::Jwt] Fetching MetaData")
 
-    # Extracting auth_server_id & client_id from the Payload
-    auth_server_id = payload['iss'].split('/')[-1]
+    # Extracting client_id and issuer from the Payload
     client_id      = payload['cid']
     issuer         = payload['iss']
 
