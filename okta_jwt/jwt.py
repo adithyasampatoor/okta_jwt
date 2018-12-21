@@ -1,5 +1,3 @@
-import os
-import json
 import requests
 from jose import jwk, jwt
 from requests.auth import HTTPBasicAuth
