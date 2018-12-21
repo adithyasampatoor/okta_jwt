@@ -85,6 +85,18 @@ class TestJWT(unittest.TestCase):
                 access_token, claims['iss'], claims['aud'], cids)
             self.assertEqual(res, claims)
 
+    @patch('okta_jwt.jwt.fetch_jwk_for')
+    @patch('okta_jwt.jwt.jwk')
+    def test_validate_token_fail(self, mockjwk, _):
+        mockjwk.construct.return_value = jwk.construct(
+            self.pub_pem, algorithm=jwk.ALGORITHMS.RS256)
+        access_token = jwt.encode(
+            {'iss': 'iss', 'aud': 'aud', 'cid': 'cid'}, self.priv_pem, jwt.ALGORITHMS.RS256)
+        access_token = '=' + access_token
+        with self.assertRaises(Exception) as ctx:
+            validate_token(access_token, 'iss', 'aud', 'cid')
+        self.assertEqual('Invalid Token', str(ctx.exception))
+
     @unpack
     @data(
         ({}, ValueError, 'Token header is missing "kid" value', None, None),
