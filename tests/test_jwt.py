@@ -2,12 +2,14 @@ import unittest
 import jose.jwt as jwt
 import jose.jwk as jwk
 from mock import patch
-from ddt import ddt, data, unpack
-from tests.mocks import MockHTTPResponse
-from okta_jwt.jwt import generate_token, validate_token, fetch_jwk_for, JWKS_CACHE, fetch_metadata_for
-from okta_jwt.exceptions import ExpiredSignatureError
 from datetime import datetime
 from calendar import timegm
+from ddt import ddt, data, unpack
+from tests.mocks import MockHTTPResponse
+from requests.exceptions import RequestException
+from okta_jwt.exceptions import ExpiredSignatureError
+from okta_jwt.jwt import (generate_token, validate_token,
+                          fetch_jwk_for, JWKS_CACHE, fetch_metadata_for)
 
 
 def get_now_formatted(offset_s=0):
@@ -18,6 +20,10 @@ def get_now_formatted(offset_s=0):
 def pem_to_dict(pem, alg=jwk.ALGORITHMS.RS256):
     key = jwk.construct(pem, alg)
     return key.to_dict()
+
+
+def raise_request_exception(*args, **kwargs):
+    raise RequestException("Failed to fetch.")
 
 
 @ddt
@@ -45,17 +51,26 @@ class TestJWT(unittest.TestCase):
                 'iss', 'cid', 'csecret', 'username', 'password')
             self.assertEqual(token, 'access_token')
 
+    @patch('okta_jwt.jwt.requests.post')
+    def test_generate_token_request_error(self, mockpost):
+        mockpost.side_effect = raise_request_exception
+        with self.assertRaises(Exception) as ctx:
+            generate_token('iss', 'cid', 'csec', 'user', 'pass')
+        self.assertEqual('Error: Failed to fetch.', str(ctx.exception))
+
     @unpack
     @data(
-        ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss'}, None),
+        ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss'}, None, 'cid'),
+        ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss'},
+         None, ['cid', 'cid1']),
         ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss',
-              'iat': get_now_formatted(), 'exp': get_now_formatted(10)}, None),
+              'iat': get_now_formatted(), 'exp': get_now_formatted(10)}, None, 'cid'),
         ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss', 'iat': get_now_formatted(-10),
-              'exp': get_now_formatted(-1)}, ExpiredSignatureError),
+              'exp': get_now_formatted(-1)}, ExpiredSignatureError, 'cid'),
     )
     @patch('okta_jwt.jwt.fetch_jwk_for')
     @patch('okta_jwt.jwt.jwk')
-    def test_validate_token(self, header, claims, error_t, mockjwk, _):
+    def test_validate_token(self, header, claims, error_t, cids, mockjwk, _):
         mockjwk.construct.return_value = jwk.construct(
             self.pub_pem, algorithm=jwk.ALGORITHMS.RS256)
         access_token = jwt.encode(
@@ -63,11 +78,11 @@ class TestJWT(unittest.TestCase):
         if error_t:
             with self.assertRaises(error_t) as ctx:
                 validate_token(
-                    access_token, claims['iss'], claims['aud'], claims['cid'])
+                    access_token, claims['iss'], claims['aud'], cids)
             self.assertEqual(error_t, type(ctx.exception))
         else:
             res = validate_token(
-                access_token, claims['iss'], claims['aud'], claims['cid'])
+                access_token, claims['iss'], claims['aud'], cids)
             self.assertEqual(res, claims)
 
     @unpack
@@ -95,6 +110,14 @@ class TestJWT(unittest.TestCase):
             jwk = fetch_jwk_for(header, {})
             self.assertEqual(jwk, expected)
 
+    @patch('okta_jwt.jwt.fetch_metadata_for')
+    @patch('okta_jwt.jwt.requests.get')
+    def test_fetch_jwk_request_error(self, mockget, _):
+        mockget.side_effect = raise_request_exception
+        with self.assertRaises(Exception) as ctx:
+            fetch_jwk_for({'kid': 'kid'}, {})
+        self.assertEqual('Error: Failed to fetch.', str(ctx.exception))
+
     @unpack
     @data(
         ({'cid': 'cid', 'iss': 'iss'}, MockHTTPResponse(
@@ -111,3 +134,10 @@ class TestJWT(unittest.TestCase):
         else:
             meta = fetch_metadata_for(payload)
             self.assertEqual(meta, {})
+
+    @patch('okta_jwt.jwt.requests.get')
+    def test_fetch_metadata_request_error(self, mockget):
+        mockget.side_effect = raise_request_exception
+        with self.assertRaises(Exception) as ctx:
+            fetch_metadata_for({'cid': 'cid', 'iss': 'iss'})
+        self.assertEqual('Error: Failed to fetch.', str(ctx.exception))
