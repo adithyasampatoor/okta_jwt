@@ -51,7 +51,7 @@ def generate_token(issuer, client_id, client_secret, username, password, scope='
         return access_token
     except requests.exceptions.RequestException as e:
         # A serious problem happened, like an SSLError or InvalidURL
-        raise "Error: {}".format(str(e))
+        raise Exception("Error: {}".format(str(e)))
 
 
 # Verifies Claims
@@ -131,12 +131,15 @@ def fetch_jwk_for(header, payload):
 
         # Consider any status other than 2xx an error
         if not jwks_response.status_code // 100 == 2:
-            return "Error: Unexpected response {}".format(jwks_response)
+            raise Exception(jwks_response.text, jwks_response.status_code)
     except requests.exceptions.RequestException as e:
         # A serious problem happened, like an SSLError or InvalidURL
-        raise "Error: {}".format(str(e))
+        raise Exception("Error: {}".format(str(e)))
 
-    jwk = list(filter(lambda x: x['kid'] == kid, jwks_response.json()['keys']))[0]
+    jwks = list(filter(lambda x: x['kid'] == kid, jwks_response.json()['keys']))
+    if not len(jwks):
+        raise Exception("Error: Could not find jwk for kid: {}".format(kid))
+    jwk = jwks[0]
 
     # Adding JWK to the Cache
     JWKS_CACHE[kid] = jwk
@@ -159,11 +162,11 @@ def fetch_metadata_for(payload):
 
         # Consider any status other than 2xx an error
         if not metadata_response.status_code // 100 == 2:
-            return "Error: Unexpected response {}".format(metadata_response)
+            raise Exception(metadata_response.text, metadata_response.status_code)
 
         json_obj = metadata_response.json()
         return json_obj
 
     except requests.exceptions.RequestException as e:
         # A serious problem happened, like an SSLError or InvalidURL
-        raise "Error: {}".format(str(e))
+        raise Exception("Error: {}".format(str(e)))

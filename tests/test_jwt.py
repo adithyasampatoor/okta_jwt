@@ -4,7 +4,7 @@ import jose.jwk as jwk
 from mock import patch
 from ddt import ddt, data, unpack
 from tests.mocks import MockHTTPResponse
-from okta_jwt.jwt import generate_token, validate_token
+from okta_jwt.jwt import generate_token, validate_token, fetch_jwk_for, JWKS_CACHE, fetch_metadata_for
 from okta_jwt.exceptions import ExpiredSignatureError
 from datetime import datetime
 from calendar import timegm
@@ -15,6 +15,11 @@ def get_now_formatted(offset_s=0):
     return timegm(utcnow.timetuple()) + offset_s
 
 
+def pem_to_dict(pem, alg=jwk.ALGORITHMS.RS256):
+    key = jwk.construct(pem, alg)
+    return key.to_dict()
+
+
 @ddt
 class TestJWT(unittest.TestCase):
     priv_pem = open('tests/private.pem', 'r').read()
@@ -23,16 +28,14 @@ class TestJWT(unittest.TestCase):
     @unpack
     @data(
         (MockHTTPResponse(401, 'Authentication failed.'),
-         True, 'Authentication failed.', 401),
-        (MockHTTPResponse(),
-         True, 'no access_token in response from /token endpoint', 401),
-        (MockHTTPResponse(json={'access_token': 'access_token'}),
-         False, '', None)
+         'Authentication failed.', 401),
+        (MockHTTPResponse(), 'no access_token in response from /token endpoint', 401),
+        (MockHTTPResponse(json={'access_token': 'access_token'}), '', None)
     )
     @patch('okta_jwt.jwt.requests.post')
-    def test_generate_token(self, mockresponse, should_raise, error, code, mockpost):
+    def test_generate_token(self, mockresponse, error, code, mockpost):
         mockpost.return_value = mockresponse
-        if should_raise:
+        if error:
             with self.assertRaises(Exception) as ctx:
                 generate_token('iss', 'cid', 'csecret', 'username', 'password')
             self.assertEqual(error, ctx.exception.args[0])
@@ -44,25 +47,67 @@ class TestJWT(unittest.TestCase):
 
     @unpack
     @data(
-        ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss'}, False, None),
+        ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss'}, None),
         ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss',
-              'iat': get_now_formatted(), 'exp': get_now_formatted(10)}, False, None),
-        ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss',
-              'iat': get_now_formatted(-10), 'exp': get_now_formatted(-1)}, True, ExpiredSignatureError),
+              'iat': get_now_formatted(), 'exp': get_now_formatted(10)}, None),
+        ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss', 'iat': get_now_formatted(-10),
+              'exp': get_now_formatted(-1)}, ExpiredSignatureError),
     )
     @patch('okta_jwt.jwt.fetch_jwk_for')
     @patch('okta_jwt.jwt.jwk')
-    def test_validate_token(self, header, claims, should_raise, error, mockjwk, _):
+    def test_validate_token(self, header, claims, error_t, mockjwk, _):
         mockjwk.construct.return_value = jwk.construct(
             self.pub_pem, algorithm=jwk.ALGORITHMS.RS256)
         access_token = jwt.encode(
             claims, self.priv_pem, jwt.ALGORITHMS.RS256, header)
-        if should_raise:
-            with self.assertRaises(error) as ctx:
+        if error_t:
+            with self.assertRaises(error_t) as ctx:
                 validate_token(
                     access_token, claims['iss'], claims['aud'], claims['cid'])
-            self.assertEqual(error, type(ctx.exception))
+            self.assertEqual(error_t, type(ctx.exception))
         else:
             res = validate_token(
                 access_token, claims['iss'], claims['aud'], claims['cid'])
             self.assertEqual(res, claims)
+
+    @unpack
+    @data(
+        ({}, ValueError, 'Token header is missing "kid" value', None, None),
+        ({'kid': 'kid'}, None, '', None, pem_to_dict(pub_pem)),
+        ({'kid': 'kid1'}, Exception, 'Not found.',
+         MockHTTPResponse(404, text='Not found.'), None),
+        ({'kid': 'kid2'}, Exception, 'Error: Could not find jwk for kid: kid2',
+         MockHTTPResponse(json={'keys': [{'kid': 'kid1'}]}), None),
+        ({'kid': 'kid2'}, None, '', MockHTTPResponse(
+            json={'keys': [{'kid': 'kid2'}]}), {'kid': 'kid2'})
+    )
+    @patch.dict(JWKS_CACHE, {'kid': pem_to_dict(pub_pem)})
+    @patch('okta_jwt.jwt.fetch_metadata_for')
+    @patch('okta_jwt.jwt.requests.get')
+    def test_fetch_jwk_for(self, header, error_t, error, getresponse, expected, mockget, _):
+        mockget.return_value = getresponse
+        if error_t:
+            with self.assertRaises(error_t) as ctx:
+                fetch_jwk_for(header, {})
+            self.assertEqual(error_t, type(ctx.exception))
+            self.assertEqual(error, ctx.exception.args[0])
+        else:
+            jwk = fetch_jwk_for(header, {})
+            self.assertEqual(jwk, expected)
+
+    @unpack
+    @data(
+        ({'cid': 'cid', 'iss': 'iss'}, MockHTTPResponse(
+            404, 'Not found.'), 'Not found.'),
+        ({'cid': 'cid', 'iss': 'iss'}, MockHTTPResponse(), '')
+    )
+    @patch('okta_jwt.jwt.requests.get')
+    def test_metadata_for(self, payload, getresponse, error, mockget):
+        mockget.return_value = getresponse
+        if error:
+            with self.assertRaises(Exception) as ctx:
+                fetch_metadata_for(payload)
+            self.assertEqual(error, ctx.exception.args[0])
+        else:
+            meta = fetch_metadata_for(payload)
+            self.assertEqual(meta, {})
