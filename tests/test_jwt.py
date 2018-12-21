@@ -1,89 +1,68 @@
-import os
-import json
-import mock
 import unittest
+import jose.jwt as jwt
+import jose.jwk as jwk
 from mock import patch
-from okta_jwt.exceptions import JWTClaimsError
-from okta_jwt.jwt import validate_token, generate_token
+from ddt import ddt, data, unpack
+from tests.mocks import MockHTTPResponse
+from okta_jwt.jwt import generate_token, validate_token
+from okta_jwt.exceptions import ExpiredSignatureError
+from datetime import datetime
+from calendar import timegm
 
 
+def get_now_formatted(offset_s=0):
+    utcnow = datetime.utcnow()
+    return timegm(utcnow.timetuple()) + offset_s
 
+
+@ddt
 class TestJWT(unittest.TestCase):
+    priv_pem = open('tests/private.pem', 'r').read()
+    pub_pem = open('tests/public.pem', 'r').read()
 
-    def setUp(self):
-        self.access_token = generate_token()
-        self.issuer       = os.environ['OKTA_ISSUER']
-        self.audience     = os.environ['OKTA_AUDIENCE']
-        self.client_id    = os.environ['OKTA_CLIENT_IDS']
+    @unpack
+    @data(
+        (MockHTTPResponse(401, 'Authentication failed.'),
+         True, 'Authentication failed.', 401),
+        (MockHTTPResponse(),
+         True, 'no access_token in response from /token endpoint', 401),
+        (MockHTTPResponse(json={'access_token': 'access_token'}),
+         False, '', None)
+    )
+    @patch('okta_jwt.jwt.requests.post')
+    def test_generate_token(self, mockresponse, should_raise, error, code, mockpost):
+        mockpost.return_value = mockresponse
+        if should_raise:
+            with self.assertRaises(Exception) as ctx:
+                generate_token('iss', 'cid', 'csecret', 'username', 'password')
+            self.assertEqual(error, ctx.exception.args[0])
+            self.assertEqual(code, ctx.exception.args[1])
+        else:
+            token = generate_token(
+                'iss', 'cid', 'csecret', 'username', 'password')
+            self.assertEqual(token, 'access_token')
 
-
-    @mock.patch.dict(os.environ, {'OKTA_ISSUER': ''})
-    def test_presence_of_issuer(self):
-        with self.assertRaises(ValueError) as context:
-            validate_token(self.access_token)
-
-        self.assertTrue('Issuer is required' in str(context.exception))
-
-
-    def test_presence_of_token(self):
-        self.access_token = ''
-
-        with self.assertRaises(ValueError) as context:
-            validate_token(self.access_token)
-
-        self.assertTrue('Access Token is required' in str(context.exception))
-
-
-    @mock.patch.dict(os.environ, {'OKTA_AUDIENCE': ''})
-    def test_presence_of_audience(self):
-        with self.assertRaises(ValueError) as context:
-            validate_token(self.access_token)
-
-        self.assertTrue('Audience is required' in str(context.exception))
-
-
-    @mock.patch.dict(os.environ, {'OKTA_CLIENT_IDS': ''})
-    def test_presence_of_client_id(self):
-        with self.assertRaises(ValueError) as context:
-            validate_token(self.access_token)
-
-        self.assertTrue('Client ID is required' in str(context.exception))
-
-
-    @mock.patch.dict(os.environ, {'OKTA_ISSUER': 'invalid'})
-    def test_invalid_issuer(self):
-
-        with self.assertRaises(JWTClaimsError) as context:
-            validate_token(self.access_token)
-
-        self.assertTrue('Invalid Issuer' in str(context.exception))
-
-
-    @mock.patch.dict(os.environ, {'OKTA_AUDIENCE': 'invalid'})
-    def test_invalid_audience(self):
-        self.audience = 'invalid'
-
-        with self.assertRaises(JWTClaimsError) as context:
-            validate_token(self.access_token)
-
-        self.assertTrue('Invalid Audience' in str(context.exception))
-
-
-    @mock.patch.dict(os.environ, {'OKTA_CLIENT_IDS': 'invalid'})
-    def test_invalid_client(self):
-        self.client_id = 'invalid'
-
-        with self.assertRaises(JWTClaimsError) as context:
-            validate_token(self.access_token)
-
-        self.assertTrue('Invalid Client' in str(context.exception))
-
-
-    def test_valid_token(self):
-        valid = validate_token(self.access_token)
-        self.assertTrue(bool(valid))
-
-
-
-if __name__ == "__main__":
-    unittest.main()
+    @unpack
+    @data(
+        ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss'}, False, None),
+        ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss',
+              'iat': get_now_formatted(), 'exp': get_now_formatted(10)}, False, None),
+        ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss',
+              'iat': get_now_formatted(-10), 'exp': get_now_formatted(-1)}, True, ExpiredSignatureError),
+    )
+    @patch('okta_jwt.jwt.fetch_jwk_for')
+    @patch('okta_jwt.jwt.jwk')
+    def test_validate_token(self, header, claims, should_raise, error, mockjwk, _):
+        mockjwk.construct.return_value = jwk.construct(
+            self.pub_pem, algorithm=jwk.ALGORITHMS.RS256)
+        access_token = jwt.encode(
+            claims, self.priv_pem, jwt.ALGORITHMS.RS256, header)
+        if should_raise:
+            with self.assertRaises(error) as ctx:
+                validate_token(
+                    access_token, claims['iss'], claims['aud'], claims['cid'])
+            self.assertEqual(error, type(ctx.exception))
+        else:
+            res = validate_token(
+                access_token, claims['iss'], claims['aud'], claims['cid'])
+            self.assertEqual(res, claims)
