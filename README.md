@@ -1,6 +1,6 @@
 # Okta Jwt
 
-Okta JWT Access Token Generator & verifier for Python using cached JWKs.
+Okta JWT Access Token verifier for Python using cached JWKs.
 
 Link to PyPi - click [here](https://pypi.org/project/okta-jwt/)
 
@@ -32,6 +32,16 @@ To Validate the Access Token, you need to pass in the `access_token`, `issuer`, 
 
 If the token is valid then it will return the payload.
 
+The output from `validate_token` will look similar to the following:
+```python
+	[Okta::Jwt] Verifying Claims
+	[Okta::Jwt] Fetching public key: kid => {kid}
+	[Okta::Jwt] Fetching MetaData
+	[Okta::Jwt] Validating the Access Token
+
+	Valid Token
+```
+
 ## Running the tests
 
 To run the unit tests, run
@@ -40,7 +50,7 @@ To run the unit tests, run
 
 ### Break down into tests
 
-The unit tests pretty much covers all the main functionality of the package, like generating the token, Validating the token, Checking presence of ENV Variables(which is a prerequisite) and Verifying Claims.
+The unit tests pretty much covers all the main functionality of the package, like generating the token, Validating the token and Verifying Claims.
 
 ## Contributing
 
