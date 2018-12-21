@@ -1,4 +1,3 @@
-import calendar
 from calendar import timegm
 from datetime import datetime, timedelta
 from six import string_types
@@ -87,7 +86,7 @@ def verify_iat(payload, leeway=300):
     not issued in the future, with some leeway for clock skew.
     """
     time_now_with_leeway = datetime.utcnow() + timedelta(seconds=leeway)
-    acceptable_iat = calendar.timegm((time_now_with_leeway).timetuple())
+    acceptable_iat = timegm((time_now_with_leeway).timetuple())
 
     if 'iat' in payload and payload['iat'] > acceptable_iat:
         raise JWTClaimsError('Invalid Issued At(iat) Time')

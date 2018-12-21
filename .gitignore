@@ -33,3 +33,7 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+
+venv/
+.vscode/
+runcoverage.sh
