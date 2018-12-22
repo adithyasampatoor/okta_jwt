@@ -1,5 +1,3 @@
-import os
-import json
 import requests
 from jose import jwk, jwt
 from requests.auth import HTTPBasicAuth
@@ -38,12 +36,12 @@ def generate_token(issuer, client_id, client_secret, username, password, scope='
 
         # Consider any status other than 2xx an error
         if not response.status_code // 100 == 2:
-            return "Error: Unexpected response {}".format(response)
+            raise Exception(response.text, response.status_code)
 
         return_value = response.json()
 
         if 'access_token' not in return_value:
-            return "no access_token in response from /token endpoint", 401
+            raise Exception("no access_token in response from /token endpoint", 401)
 
         print("[Okta::Jwt] Generating Okta Token")
         access_token = return_value['access_token']
@@ -51,7 +49,7 @@ def generate_token(issuer, client_id, client_secret, username, password, scope='
         return access_token
     except requests.exceptions.RequestException as e:
         # A serious problem happened, like an SSLError or InvalidURL
-        raise "Error: {}".format(str(e))
+        raise Exception("Error: {}".format(str(e)))
 
 
 # Verifies Claims
@@ -131,12 +129,15 @@ def fetch_jwk_for(header, payload):
 
         # Consider any status other than 2xx an error
         if not jwks_response.status_code // 100 == 2:
-            return "Error: Unexpected response {}".format(jwks_response)
+            raise Exception(jwks_response.text, jwks_response.status_code)
     except requests.exceptions.RequestException as e:
         # A serious problem happened, like an SSLError or InvalidURL
-        raise "Error: {}".format(str(e))
+        raise Exception("Error: {}".format(str(e)))
 
-    jwk = list(filter(lambda x: x['kid'] == kid, jwks_response.json()['keys']))[0]
+    jwks = list(filter(lambda x: x['kid'] == kid, jwks_response.json()['keys']))
+    if not len(jwks):
+        raise Exception("Error: Could not find jwk for kid: {}".format(kid))
+    jwk = jwks[0]
 
     # Adding JWK to the Cache
     JWKS_CACHE[kid] = jwk
@@ -147,8 +148,7 @@ def fetch_jwk_for(header, payload):
 def fetch_metadata_for(payload):
     print("[Okta::Jwt] Fetching MetaData")
 
-    # Extracting auth_server_id & client_id from the Payload
-    auth_server_id = payload['iss'].split('/')[-1]
+    # Extracting client_id and issuer from the Payload
     client_id      = payload['cid']
     issuer         = payload['iss']
 
@@ -160,11 +160,11 @@ def fetch_metadata_for(payload):
 
         # Consider any status other than 2xx an error
         if not metadata_response.status_code // 100 == 2:
-            return "Error: Unexpected response {}".format(metadata_response)
+            raise Exception(metadata_response.text, metadata_response.status_code)
 
         json_obj = metadata_response.json()
         return json_obj
 
     except requests.exceptions.RequestException as e:
         # A serious problem happened, like an SSLError or InvalidURL
-        raise "Error: {}".format(str(e))
+        raise Exception("Error: {}".format(str(e)))
