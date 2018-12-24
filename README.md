@@ -2,6 +2,8 @@
 
 Okta JWT Access Token verifier for Python using cached JWKs.
 
+[![version](https://badge.fury.io/py/okta-jwt.svg)](https://badge.fury.io/py/okta-jwt)
+
 Link to PyPi - click [here](https://pypi.org/project/okta-jwt/)
 
 ## Installation
