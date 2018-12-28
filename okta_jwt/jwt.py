@@ -69,7 +69,7 @@ def validate_token(access_token, issuer, audience, client_ids):
     cid_list = []
 
     if not isinstance(client_ids, list):
-        cid_list.append(client_ids)
+        cid_list = client_ids.split(',')
     else:
         cid_list = client_ids
 
