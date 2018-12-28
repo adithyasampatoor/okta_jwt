@@ -20,11 +20,8 @@ To generate a token, you need to pass in `issuer`, `client_id`, `client_secret`,
 	>>> generate_token(issuer, client_id, client_secret, username, password)
 ```
 
-This generates and returns Okta Access Token. You should Probably see something as below:
-```python
-	[Okta::Jwt] Generating Okta Token
-	{token}
-```
+This generates and returns Okta Access Token.
+
 
 To Validate the Access Token, you need to pass in the `access_token`, `issuer`, `audience` and `client_ids` as parameters. You can pass in multiple Client IDs
 ```python
@@ -34,15 +31,6 @@ To Validate the Access Token, you need to pass in the `access_token`, `issuer`, 
 
 If the token is valid then it will return the payload.
 
-The output from `validate_token` will look similar to the following:
-```python
-	[Okta::Jwt] Verifying Claims
-	[Okta::Jwt] Fetching public key: kid => {kid}
-	[Okta::Jwt] Fetching MetaData
-	[Okta::Jwt] Validating the Access Token
-
-	Valid Token
-```
 
 ## Running the tests
 
