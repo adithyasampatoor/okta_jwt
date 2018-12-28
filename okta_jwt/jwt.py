@@ -43,7 +43,6 @@ def generate_token(issuer, client_id, client_secret, username, password, scope='
         if 'access_token' not in return_value:
             raise Exception("no access_token in response from /token endpoint", 401)
 
-        print("[Okta::Jwt] Generating Okta Token")
         access_token = return_value['access_token']
 
         return access_token
@@ -57,8 +56,6 @@ def verify_claims(payload, issuer, audience, cid_list):
     """ Validates Issuer, Client IDs, Audience
     Issued At time and Expiration in the Payload
     """
-    print("[Okta::Jwt] Verifying Claims")
-
     verify_iss(payload, issuer)
     verify_cid(payload, cid_list)
     verify_aud(payload, audience)
@@ -91,14 +88,10 @@ def validate_token(access_token, issuer, audience, client_ids):
     message, encoded_sig = access_token.rsplit('.', 1)
     decoded_sig = base64url_decode(encoded_sig.encode('utf-8'))
 
-    print("[Okta::Jwt] Validating the Access Token")
-    print()
-
     valid = key.verify(message.encode(), decoded_sig)
 
     # If the token is valid, it returns the payload 
     if valid == True:
-        print('Valid Token')
         return payload
     else:
         raise Exception('Invalid Token')
@@ -118,8 +111,6 @@ def fetch_jwk_for(header, payload):
     if JWKS_CACHE:
         if kid in JWKS_CACHE:
             return JWKS_CACHE[kid]
-
-    print("[Okta::Jwt] Fetching public key: kid => " + str(kid))
 
     # Fetching jwk
     url = fetch_metadata_for(payload)['jwks_uri']
@@ -146,11 +137,9 @@ def fetch_jwk_for(header, payload):
 
 
 def fetch_metadata_for(payload):
-    print("[Okta::Jwt] Fetching MetaData")
-
     # Extracting client_id and issuer from the Payload
-    client_id      = payload['cid']
-    issuer         = payload['iss']
+    client_id = payload['cid']
+    issuer    = payload['iss']
 
     # Preparing URL to get the metadata
     url = "{}/.well-known/oauth-authorization-server?client_id={}".format(issuer, client_id)
