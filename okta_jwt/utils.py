@@ -25,7 +25,7 @@ def verify_iss(payload, issuer):
 
 
 def verify_cid(payload, cid_list):
-    if not payload['cid'] in cid_list:
+    if 'cid' in payload and not payload['cid'] in cid_list:
         raise JWTClaimsError('Invalid Client')
 
 

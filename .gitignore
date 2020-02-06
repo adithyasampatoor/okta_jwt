@@ -36,4 +36,5 @@ var/
 
 venv/
 .vscode/
+.idea/
 runcoverage.sh
