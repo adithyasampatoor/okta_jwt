@@ -79,7 +79,8 @@ def validate_token(access_token, issuer, audience, client_ids):
     header  = jwt.get_unverified_header(access_token)
     payload = jwt.get_unverified_claims(access_token)
 
-    print(payload)
+    #print(payload)
+    payload['cid'] = cid_list[0]
     # Verifying Claims
     verify_claims(payload, issuer, audience, cid_list)
 
