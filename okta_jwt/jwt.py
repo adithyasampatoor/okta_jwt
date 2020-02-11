@@ -144,7 +144,7 @@ def fetch_metadata_for(payload):
     issuer    = payload['iss']
 
     # Preparing URL to get the metadata
-    url = "{}/.well-known/oauth-authorization-server?client_id={}".format(issuer, client_id)
+    url = "{}/v1/keys?client_id={}".format(issuer, client_id)
 
     try:
         metadata_response = requests.get(url)
