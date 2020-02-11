@@ -145,7 +145,7 @@ def fetch_metadata_for(payload):
     issuer    = payload['iss']
 
     # Preparing URL to get the metadata
-    url = "{}/v1/keys".format(issuer)
+    url = "{}/oauth2/v1/keys".format(issuer)
 
     try:
         print('url', url)
