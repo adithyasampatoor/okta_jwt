@@ -59,7 +59,7 @@ def verify_claims(payload, issuer, audience, cid_list):
     #verify_iss(payload, issuer)
     verify_cid(payload, cid_list)
     verify_aud(payload, audience)
-    #verify_exp(payload)
+    verify_exp(payload)
     verify_iat(payload)
 
 
