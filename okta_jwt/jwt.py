@@ -56,7 +56,7 @@ def verify_claims(payload, issuer, audience, cid_list):
     """ Validates Issuer, Client IDs, Audience
     Issued At time and Expiration in the Payload
     """
-    verify_iss(payload, issuer)
+    #verify_iss(payload, issuer)
     verify_cid(payload, cid_list)
     verify_aud(payload, audience)
     verify_exp(payload)
