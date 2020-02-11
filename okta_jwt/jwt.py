@@ -144,7 +144,7 @@ def fetch_metadata_for(payload):
     issuer    = payload['iss']
 
     # Preparing URL to get the metadata
-    url = "{}/v1/keys?client_id={}".format(issuer, client_id)
+    url = "{}/v1/keys".format(issuer)
 
     try:
         metadata_response = requests.get(url)
@@ -154,6 +154,7 @@ def fetch_metadata_for(payload):
             raise Exception(metadata_response.text, metadata_response.status_code)
 
         json_obj = metadata_response.json()
+        print('json_obj', json_obj)
         return json_obj
 
     except requests.exceptions.RequestException as e:
