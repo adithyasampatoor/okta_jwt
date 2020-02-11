@@ -51,9 +51,9 @@ def verify_exp(payload, leeway=0):
 
     now = timegm(datetime.utcnow().utctimetuple())
 
-    print('exp:' + exp)
-    print('now:' + now)
-    print('leeway:' + leeway)
+    print('exp:', exp)
+    print('now:', now)
+    print('leeway:', leeway)
     if exp < (now - leeway):
         raise ExpiredSignatureError('Token is expired.')
 
