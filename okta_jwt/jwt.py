@@ -115,7 +115,8 @@ def fetch_jwk_for(header, payload):
             return JWKS_CACHE[kid]
 
     # Fetching jwk
-    url = fetch_metadata_for(payload)['jwks_uri']
+    # url = fetch_metadata_for(payload)['jwks_uri']
+    url = fetch_metadata_for(payload)
 
     try:
         jwks_response = requests.get(url)
@@ -140,13 +141,14 @@ def fetch_jwk_for(header, payload):
 
 def fetch_metadata_for(payload):
     # Extracting client_id and issuer from the Payload
-    client_id = payload['cid']
+    # client_id = payload['cid']
     issuer    = payload['iss']
 
     # Preparing URL to get the metadata
     url = "{}/v1/keys".format(issuer)
 
     try:
+        print('url', url)
         metadata_response = requests.get(url)
 
         # Consider any status other than 2xx an error
