@@ -142,23 +142,24 @@ def fetch_jwk_for(header, payload):
 def fetch_metadata_for(payload):
     # Extracting client_id and issuer from the Payload
     # client_id = payload['cid']
-    issuer    = payload['iss']
+    issuer = payload['iss']
 
     # Preparing URL to get the metadata
     url = "{}/oauth2/v1/keys".format(issuer)
 
-    try:
-        print('url', url)
-        metadata_response = requests.get(url)
+    return url
+    #try:
+    #    print('url', url)
+        #metadata_response = requests.get(url)
 
         # Consider any status other than 2xx an error
-        if not metadata_response.status_code // 100 == 2:
-            raise Exception(metadata_response.text, metadata_response.status_code)
+        #if not metadata_response.status_code // 100 == 2:
+        #    raise Exception(metadata_response.text, metadata_response.status_code)
 
-        json_obj = metadata_response.json()
-        print('json_obj', json_obj)
-        return json_obj
+        #json_obj = metadata_response.json()
+        #print('json_obj', json_obj)
+        #return json_obj
 
-    except requests.exceptions.RequestException as e:
+    #except requests.exceptions.RequestException as e:
         # A serious problem happened, like an SSLError or InvalidURL
-        raise Exception("Error: {}".format(str(e)))
+    #    raise Exception("Error: {}".format(str(e)))
