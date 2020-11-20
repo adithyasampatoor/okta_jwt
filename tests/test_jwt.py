@@ -9,7 +9,7 @@ from tests.mocks import MockHTTPResponse
 from requests.exceptions import RequestException
 from okta_jwt.exceptions import ExpiredSignatureError
 from okta_jwt.jwt import (generate_token, validate_token,
-                          fetch_jwk_for, JWKS_CACHE, fetch_metadata_for)
+                          fetch_jwk_for, JWKS_CACHE, fetch_metadata_for, introspect_token)
 
 
 def get_now_formatted(offset_s=0):
@@ -85,6 +85,68 @@ class TestJWT(unittest.TestCase):
                 access_token, claims['iss'], claims['aud'], cids)
             self.assertEqual(res, claims)
 
+    @unpack
+    @data(
+        ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss'}, None, 'cid'),
+        ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss'},
+         None, ['cid', 'cid1']),
+        ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss',
+              'iat': get_now_formatted(), 'exp': get_now_formatted(10)}, None, 'cid'),
+        ({}, {'aud': 'aud', 'cid': 'cid', 'iss': 'iss', 'iat': get_now_formatted(-10),
+              'exp': get_now_formatted(-1)}, ExpiredSignatureError, 'cid'),
+    )
+    @patch('okta_jwt.jwt.fetch_jwk_for')
+    @patch('okta_jwt.jwt.introspect_token')
+    @patch('okta_jwt.jwt.jwk')
+    def test_validate_token_with_introspection(
+            self, header, claims, error_t, cids, mockjwk, _, mockfunc):
+        mockjwk.construct.return_value = jwk.construct(
+            self.pub_pem, algorithm=jwk.ALGORITHMS.RS256)
+        access_token = jwt.encode(
+            claims, self.priv_pem, jwt.ALGORITHMS.RS256, header)
+        if error_t:
+            with self.assertRaises(error_t) as ctx:
+                validate_token(
+                    access_token, claims['iss'], claims['aud'], cids)
+            self.assertEqual(error_t, type(ctx.exception))
+        else:
+            res = validate_token(
+                access_token, claims['iss'], claims['aud'], cids, introspect=True)
+            self.assertEqual(res, claims)
+
+    @unpack
+    @data(
+        (MockHTTPResponse(401, 'Authentication failed.'),
+         'Authentication failed.', 401),
+        (MockHTTPResponse(), 'Invalid Token', 401),
+        (MockHTTPResponse(json={'active': True}), '', None)
+    )
+    @patch('okta_jwt.jwt.requests.post')
+    def test_validate_token_with_introspection_fail(
+            self, mockresponse, error, code, mockpost):
+        access_token = jwt.encode(
+            {'iss': 'https://iss', 'aud': 'aud', 'cid': 'cid'}, self.priv_pem, jwt.ALGORITHMS.RS256)
+        access_token = '=' + access_token
+
+        mockpost.return_value = mockresponse
+        if error:
+            with self.assertRaises(Exception) as ctx:
+                introspect_token(access_token)
+            self.assertEqual(error, ctx.exception.args[0])
+        else:
+            resp = introspect_token(access_token)
+            self.assertEqual(resp['active'], True)
+
+    @patch('okta_jwt.jwt.requests.post')
+    def test_introspect_token_request_error(self, mockpost):
+        mockpost.side_effect = raise_request_exception
+        access_token = jwt.encode(
+            {'iss': 'https://iss', 'aud': 'aud', 'cid': 'cid'}, self.priv_pem, jwt.ALGORITHMS.RS256)
+        access_token = '=' + access_token
+        with self.assertRaises(Exception) as ctx:
+            introspect_token(access_token)
+        self.assertEqual('Error: Failed to fetch.', str(ctx.exception))
+
     @patch('okta_jwt.jwt.fetch_jwk_for')
     @patch('okta_jwt.jwt.jwk')
     def test_validate_token_fail(self, mockjwk, _):
@@ -111,7 +173,8 @@ class TestJWT(unittest.TestCase):
     @patch.dict(JWKS_CACHE, {'kid': pem_to_dict(pub_pem)})
     @patch('okta_jwt.jwt.fetch_metadata_for')
     @patch('okta_jwt.jwt.requests.get')
-    def test_fetch_jwk_for(self, header, error_t, error, getresponse, expected, mockget, _):
+    def test_fetch_jwk_for(self, header, error_t, error,
+                           getresponse, expected, mockget, _):
         mockget.return_value = getresponse
         if error_t:
             with self.assertRaises(error_t) as ctx:
