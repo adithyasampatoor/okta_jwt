@@ -17,7 +17,8 @@ class TestUtils(unittest.TestCase):
         ('token', 'issuer', None, None, 'Audience is required'),
         ('token', 'issuer', 'audience', '', 'Client ID is required')
     )
-    def test_presence_of(self, access_token, issuer, audience, client_ids, error):
+    def test_presence_of(self, access_token, issuer,
+                         audience, client_ids, error):
         with self.assertRaises(ValueError) as ctx:
             utils.check_presence_of(access_token, issuer, audience, client_ids)
         self.assertEqual(error, str(ctx.exception))

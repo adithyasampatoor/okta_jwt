@@ -4,7 +4,6 @@ from six import string_types
 from okta_jwt.exceptions import ExpiredSignatureError, JWTClaimsError
 
 
-
 def check_presence_of(access_token, issuer, audience, client_ids):
     if not access_token:
         raise ValueError('Access Token is required')
@@ -47,7 +46,8 @@ def verify_exp(payload, leeway=0):
     try:
         exp = int(payload['exp'])
     except ValueError:
-        raise JWTClaimsError('Expiration Time payload (exp) must be an integer.')
+        raise JWTClaimsError(
+            'Expiration Time payload (exp) must be an integer.')
 
     now = timegm(datetime.utcnow().utctimetuple())
 
@@ -81,8 +81,8 @@ def verify_aud(payload, audience=None):
 
 
 def verify_iat(payload, leeway=300):
-    """The iat value indicates what time the token was "issued at". 
-    We verify that this claim is valid by checking that the token was 
+    """The iat value indicates what time the token was "issued at".
+    We verify that this claim is valid by checking that the token was
     not issued in the future, with some leeway for clock skew.
     """
     time_now_with_leeway = datetime.utcnow() + timedelta(seconds=leeway)
