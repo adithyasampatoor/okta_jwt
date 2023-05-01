@@ -22,7 +22,6 @@ To generate a token, you need to pass in `issuer`, `client_id`, `client_secret`,
 
 This generates and returns Okta Access Token.
 
-
 To Validate the Access Token, you need to pass in the `access_token`, `issuer`, `audience` and `client_ids` as parameters. You can pass in multiple Client IDs
 ```python
 	>>> from okta_jwt.jwt import validate_token
