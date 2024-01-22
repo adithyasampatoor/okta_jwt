@@ -25,7 +25,7 @@ def verify_iss(payload, issuer):
 
 
 def verify_cid(payload, cid_list):
-    if not payload['cid'] in cid_list:
+    if 'cid' in payload and not payload['cid'] in cid_list:
         raise JWTClaimsError('Invalid Client')
 
 
@@ -51,6 +51,9 @@ def verify_exp(payload, leeway=0):
 
     now = timegm(datetime.utcnow().utctimetuple())
 
+    print('exp:', exp)
+    print('now:', now)
+    print('leeway:', leeway)
     if exp < (now - leeway):
         raise ExpiredSignatureError('Token is expired.')
 

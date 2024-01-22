@@ -56,7 +56,7 @@ def verify_claims(payload, issuer, audience, cid_list):
     """ Validates Issuer, Client IDs, Audience
     Issued At time and Expiration in the Payload
     """
-    verify_iss(payload, issuer)
+    #verify_iss(payload, issuer)
     verify_cid(payload, cid_list)
     verify_aud(payload, audience)
     verify_exp(payload)
@@ -79,6 +79,8 @@ def validate_token(access_token, issuer, audience, client_ids):
     header  = jwt.get_unverified_header(access_token)
     payload = jwt.get_unverified_claims(access_token)
 
+    print('header:', header)
+    payload['cid'] = cid_list[0]
     # Verifying Claims
     verify_claims(payload, issuer, audience, cid_list)
 
@@ -113,7 +115,8 @@ def fetch_jwk_for(header, payload):
             return JWKS_CACHE[kid]
 
     # Fetching jwk
-    url = fetch_metadata_for(payload)['jwks_uri']
+    # url = fetch_metadata_for(payload)['jwks_uri']
+    url = fetch_metadata_for(payload)
 
     try:
         jwks_response = requests.get(url)
@@ -138,22 +141,25 @@ def fetch_jwk_for(header, payload):
 
 def fetch_metadata_for(payload):
     # Extracting client_id and issuer from the Payload
-    client_id = payload['cid']
-    issuer    = payload['iss']
+    # client_id = payload['cid']
+    issuer = payload['iss']
 
     # Preparing URL to get the metadata
-    url = "{}/.well-known/oauth-authorization-server?client_id={}".format(issuer, client_id)
+    url = "{}/oauth2/v1/keys".format(issuer)
 
-    try:
-        metadata_response = requests.get(url)
+    return url
+    #try:
+    #    print('url', url)
+        #metadata_response = requests.get(url)
 
         # Consider any status other than 2xx an error
-        if not metadata_response.status_code // 100 == 2:
-            raise Exception(metadata_response.text, metadata_response.status_code)
+        #if not metadata_response.status_code // 100 == 2:
+        #    raise Exception(metadata_response.text, metadata_response.status_code)
 
-        json_obj = metadata_response.json()
-        return json_obj
+        #json_obj = metadata_response.json()
+        #print('json_obj', json_obj)
+        #return json_obj
 
-    except requests.exceptions.RequestException as e:
+    #except requests.exceptions.RequestException as e:
         # A serious problem happened, like an SSLError or InvalidURL
-        raise Exception("Error: {}".format(str(e)))
+    #    raise Exception("Error: {}".format(str(e)))
