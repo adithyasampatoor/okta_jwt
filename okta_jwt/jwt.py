@@ -10,7 +10,7 @@ JWKS_CACHE = {}
 
 
 # Generates Okta Access Token
-def generate_token(issuer, client_id, client_secret, username, password, scope='openid'):
+def generate_token(issuer, client_id, client_secret, username, password, scope='openid', grant_type='password'):
     """For generating a token, you need to pass in the Issuer,
     Client ID, Client Secret, Username and Password
     """
@@ -21,12 +21,12 @@ def generate_token(issuer, client_id, client_secret, username, password, scope='
         'Content-Type': 'application/x-www-form-urlencoded'
     }
 
-    # grant_type is gonna be constant
+    # Configurable payload parameters
     payload = {
         "username":   username,
         "password":   password,
         "scope":      scope,
-        "grant_type": "password"
+        "grant_type": grant_type
     }
 
     url = "{}/v1/token".format(issuer)
