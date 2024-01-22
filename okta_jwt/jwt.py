@@ -68,10 +68,8 @@ def validate_token(access_token, issuer, audience, client_ids):
     # Client ID's list
     cid_list = []
 
-    if not isinstance(client_ids, list):
-        cid_list = client_ids.split(',')
-    else:
-        cid_list = client_ids
+    # Convert client_ids to a list if it's a string
+    cid_list = client_ids.split(',') if isinstance(client_ids, str) else client_ids
 
     check_presence_of(access_token, issuer, audience, cid_list)
 
@@ -88,13 +86,11 @@ def validate_token(access_token, issuer, audience, client_ids):
     message, encoded_sig = access_token.rsplit('.', 1)
     decoded_sig = base64url_decode(encoded_sig.encode('utf-8'))
 
-    valid = key.verify(message.encode(), decoded_sig)
-
     # If the token is valid, it returns the payload 
-    if valid == True:
+    if key.verify(message.encode(), decoded_sig):
         return payload
     else:
-        raise Exception('Invalid Token')
+        raise Exception('Invalid Token Signature')
 
 
 # Extract public key from metadata's jwks_uri using kid
