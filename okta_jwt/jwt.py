@@ -4,10 +4,7 @@ from requests.auth import HTTPBasicAuth
 from jose.utils import base64url_decode
 from okta_jwt.utils import verify_exp, verify_aud, check_presence_of, verify_iat, verify_iss, verify_cid
 
-
-
 JWKS_CACHE = {}
-
 
 # Generates Okta Access Token
 def generate_token(issuer, client_id, client_secret, username, password, scope='openid', grant_type='password'):
@@ -96,40 +93,39 @@ def validate_token(access_token, issuer, audience, client_ids):
 # Extract public key from metadata's jwks_uri using kid
 def fetch_jwk_for(header, payload):
     # Extracting kid from the Header
-    if 'kid' in header:
-        kid = header['kid']
-    else:
+
+    kid = header.get('kid')
+    if not kid:
         raise ValueError('Token header is missing "kid" value')
 
     global JWKS_CACHE
 
     # If there is a matching kid, it wont fetch for kid from the server again
-    if JWKS_CACHE:
-        if kid in JWKS_CACHE:
-            return JWKS_CACHE[kid]
+    if JWKS_CACHE and kid in JWKS_CACHE:
+        return JWKS_CACHE[kid]
 
     # Fetching jwk
     url = fetch_metadata_for(payload)['jwks_uri']
 
     try:
+        # Making an HTTP GET request to the JWKS URI
         jwks_response = requests.get(url)
+        jwks_response.raise_for_status()  # Raises HTTPError for bad responses
 
-        # Consider any status other than 2xx an error
-        if not jwks_response.status_code // 100 == 2:
-            raise Exception(jwks_response.text, jwks_response.status_code)
+        # Extracting the JWK with a matching kid
+        jwks = [key for key in jwks_response.json().get('keys', []) if key.get('kid') == kid]
+        if not jwks:
+            raise Exception(f"Error: Could not find jwk for kid: {kid}")
+
+        jwk = jwks[0]
+
+        # Adding JWK to the Cache
+        jwks_cache[kid] = jwk
+
+        return jwk
     except requests.exceptions.RequestException as e:
-        # A serious problem happened, like an SSLError or InvalidURL
-        raise Exception("Error: {}".format(str(e)))
-
-    jwks = list(filter(lambda x: x['kid'] == kid, jwks_response.json()['keys']))
-    if not len(jwks):
-        raise Exception("Error: Could not find jwk for kid: {}".format(kid))
-    jwk = jwks[0]
-
-    # Adding JWK to the Cache
-    JWKS_CACHE[kid] = jwk
-
-    return jwk
+        # Handling HTTP request errors
+        raise Exception(f"HTTP request error: {str(e)}")
 
 
 def fetch_metadata_for(payload):
